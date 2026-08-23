@@ -444,16 +444,20 @@ struct Callbacks : Emulator::Interface::Bind {
 
 static Callbacks core_bind;
 
+//the frontend is allowed to leave value as NULL if it doesn't know the key,
+//so never hand that straight to strcmp() and friends
+static const char * get_var(const char * name, const char * defval)
+{
+	struct retro_variable var = {name, defval};
+	if (core_bind.penviron(RETRO_ENVIRONMENT_GET_VARIABLE, (void*)&var) && var.value)
+		return var.value;
+	return defval;
+}
+
 static const char * read_opt(const char * name, const char * defval)
 {
-	struct retro_variable allowvar = { "bsnes_violate_accuracy", "disabled" };
-	core_bind.penviron(RETRO_ENVIRONMENT_GET_VARIABLE, (void*)&allowvar);
-	if (!strcmp(allowvar.value, "enabled"))
-	{
-		struct retro_variable var = {name, defval};
-		core_bind.penviron(RETRO_ENVIRONMENT_GET_VARIABLE, (void*)&var);
-		return var.value;
-	}
+	if (!strcmp(get_var("bsnes_violate_accuracy", "disabled"), "enabled"))
+		return get_var(name, defval);
 	else return defval;
 }
 
@@ -593,25 +597,22 @@ static void update_variables(void) {
       SuperFamicom::superfx.frequency=(uint64)superfx_freq_orig*percent/100;
    }
 
-   struct retro_variable overscan_var = { "bsnes_crop_overscan", "disabled" };
-   core_bind.penviron(RETRO_ENVIRONMENT_GET_VARIABLE, (void*)&overscan_var);
-   if (strcmp(overscan_var.value, "enabled") == 0)
+   const char * overscan_opt = get_var("bsnes_crop_overscan", "disabled");
+   if (strcmp(overscan_opt, "enabled") == 0)
      core_bind.crop_overscan = true;
    else
      core_bind.crop_overscan = false;
-     
-   struct retro_variable gamma_ramp_var = { "bsnes_gamma_ramp", "disabled" };
-   core_bind.penviron(RETRO_ENVIRONMENT_GET_VARIABLE, (void*)&gamma_ramp_var);
-   if (strcmp(gamma_ramp_var.value, "enabled") == 0)
+
+   const char * gamma_ramp_opt = get_var("bsnes_gamma_ramp", "disabled");
+   if (strcmp(gamma_ramp_opt, "enabled") == 0)
      core_bind.gamma_ramp = true;
    else
      core_bind.gamma_ramp = false;
 
-   struct retro_variable region_var = { "bsnes_region", "auto" };
-   core_bind.penviron(RETRO_ENVIRONMENT_GET_VARIABLE, (void*)&region_var);
-   if (strcmp(region_var.value, "ntsc") == 0)
+   const char * region_opt = get_var("bsnes_region", "auto");
+   if (strcmp(region_opt, "ntsc") == 0)
      core_bind.region_mode = 1;
-   else if (strcmp(region_var.value, "pal") == 0)
+   else if (strcmp(region_opt, "pal") == 0)
      core_bind.region_mode = 2;
    else
      core_bind.region_mode = 0;
@@ -624,11 +625,10 @@ static void update_variables(void) {
      SuperFamicom::configuration.region = SuperFamicom::System::Region::Autodetect;
 
    unsigned short old_aspect_ratio_mode = core_bind.aspect_ratio_mode;
-   struct retro_variable aspect_ratio_var = { "bsnes_aspect_ratio", "auto" };
-   core_bind.penviron(RETRO_ENVIRONMENT_GET_VARIABLE, (void*)&aspect_ratio_var);
-   if (strcmp(aspect_ratio_var.value, "ntsc") == 0)
+   const char * aspect_ratio_opt = get_var("bsnes_aspect_ratio", "auto");
+   if (strcmp(aspect_ratio_opt, "ntsc") == 0)
      core_bind.aspect_ratio_mode = 1;
-   else if (strcmp(aspect_ratio_var.value, "pal") == 0)
+   else if (strcmp(aspect_ratio_opt, "pal") == 0)
      core_bind.aspect_ratio_mode = 2;
    else
      core_bind.aspect_ratio_mode = 0;
